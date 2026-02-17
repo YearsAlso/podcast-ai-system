@@ -54,6 +54,20 @@ AI_SUMMARY_ENABLED = False
 AI_MODEL = "gpt-3.5-turbo"
 AI_MAX_TOKENS = 1000
 
+# ==================== 音频下载配置 ====================
+
+# 下载超时时间（秒）
+DOWNLOAD_TIMEOUT = 30
+
+# 最大重试次数
+DOWNLOAD_MAX_RETRIES = 3
+
+# 临时文件保留时间（小时）
+TEMP_FILE_MAX_AGE_HOURS = 24
+
+# 支持的文件格式（用于验证）
+SUPPORTED_AUDIO_FORMATS = [".mp3", ".m4a", ".wav", ".ogg", ".flac", ".aac"]
+
 # ==================== 播客源配置 ====================
 
 # 默认播客订阅（可以在运行时覆盖）
@@ -109,6 +123,9 @@ def get_config_summary():
         "transcription_mode": TRANSCRIPTION_MODE,
         "language": TRANSCRIPT_LANGUAGE,
         "ai_summary_enabled": AI_SUMMARY_ENABLED,
+        "download_timeout": DOWNLOAD_TIMEOUT,
+        "download_max_retries": DOWNLOAD_MAX_RETRIES,
+        "temp_file_max_age_hours": TEMP_FILE_MAX_AGE_HOURS,
     }
 
 

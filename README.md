@@ -97,6 +97,38 @@ TRANSCRIPTION_MODE = "simplified"
 **优点**: 无需任何依赖，快速验证系统  
 **功能**: 仅下载和保存音频信息，不实际转录
 
+## 📥 音频下载功能
+
+系统现在支持真正的音频下载功能：
+
+### 功能特性
+- ✅ **真实下载**: 使用 requests 库下载音频文件
+- ✅ **多格式支持**: MP3, M4A, WAV, OGG, FLAC, AAC 等
+- ✅ **进度显示**: 下载时显示进度和速度
+- ✅ **错误处理**: 完善的错误处理和重试机制
+- ✅ **文件管理**: 自动清理旧文件
+
+### 配置选项
+```python
+# 下载超时时间（秒）
+DOWNLOAD_TIMEOUT = 30
+
+# 最大重试次数
+DOWNLOAD_MAX_RETRIES = 3
+
+# 临时文件保留时间（小时）
+TEMP_FILE_MAX_AGE_HOURS = 24
+```
+
+### 使用命令
+```bash
+# 清理临时文件
+python podcast_processor.py cleanup --age 24
+
+# 模拟清理（不实际删除）
+python podcast_processor.py cleanup --dry-run
+```
+
 ## 📁 项目结构
 
 ```
@@ -104,11 +136,15 @@ podcast-ai-system/
 ├── podcast_processor.py     # 主处理脚本
 ├── config.py                # 配置文件
 ├── transcription.py         # 多方案转录模块
+├── audio_downloader.py      # 音频下载模块
 ├── setup.sh                 # 安装脚本
 ├── README.md                # 说明文档
+├── NO_WHISPER_SOLUTIONS.md  # 非Whisper方案指南
 ├── .gitignore               # Git忽略文件
 ├── apple_podcast_auto.py    # 苹果播客专用处理
 ├── simple_podcast_processor.py  # 简单处理脚本
+├── test_audio_download.py   # 音频下载测试
+├── test_transcription.py    # 转录功能测试
 ├── version.py               # 版本管理
 └── templates/               # Markdown模板
 ```

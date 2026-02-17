@@ -8,6 +8,7 @@ import argparse
 import os
 import sys
 import sqlite3
+import time
 from datetime import datetime
 
 # 导入配置
@@ -27,6 +28,16 @@ try:
 except ImportError:
     TRANSCRIPTION_AVAILABLE = False
     print("⚠️  转录模块不可用，使用简化模式")
+
+# 导入音频下载模块
+try:
+    from audio_downloader import download_audio, get_audio_info, cleanup_temp_files
+    from config import DOWNLOAD_TIMEOUT, TEMP_FILE_MAX_AGE_HOURS
+
+    AUDIO_DOWNLOAD_AVAILABLE = True
+except ImportError:
+    AUDIO_DOWNLOAD_AVAILABLE = False
+    print("⚠️  音频下载模块不可用，使用模拟下载")
 
 
 def setup_environment():
@@ -150,26 +161,86 @@ def process_single_episode(podcast_name, episode_info, test_mode=False):
     # 处理步骤
     steps_completed = []
 
-    # 步骤1: 下载音频（模拟）
+    # 步骤1: 下载音频
     print("  📥 下载音频...")
-    # 这里实际应该下载音频文件
-    # 为了演示，我们创建一个模拟音频文件
-    temp_audio_path = os.path.join(
-        TEMP_DIR, f"audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-    )
-    os.makedirs(TEMP_DIR, exist_ok=True)
+    temp_audio_path = None
+    audio_url = episode_info.get("audio_url", "")
 
-    with open(temp_audio_path, "w", encoding="utf-8") as f:
-        f.write(f"模拟音频文件: {episode_title}\n")
-        f.write(f"播客: {podcast_name}\n")
-        f.write(f"时间: {datetime.now()}\n")
+    if audio_url and AUDIO_DOWNLOAD_AVAILABLE and not test_mode:
+        try:
+            # 真正的音频下载
+            temp_audio_path = download_audio(
+                audio_url, podcast_name, episode_title, timeout=DOWNLOAD_TIMEOUT
+            )
 
-    steps_completed.append("📥 音频准备")
+            # 获取文件信息
+            if temp_audio_path and os.path.exists(temp_audio_path):
+                file_info = get_audio_info(temp_audio_path)
+                if file_info:
+                    print(
+                        f"    ✅ 下载成功: {file_info['size_formatted']}, 格式: {file_info['extension']}"
+                    )
+                    steps_completed.append(
+                        f"📥 音频下载 ({file_info['size_formatted']})"
+                    )
+                else:
+                    steps_completed.append("📥 音频下载")
+            else:
+                print("    ⚠️  下载失败: 文件不存在")
+                steps_completed.append("📥 下载失败")
+
+        except Exception as e:
+            print(f"    ❌ 下载失败: {e}")
+            temp_audio_path = None
+            steps_completed.append("📥 下载失败")
+
+            # 创建模拟文件作为备用
+            temp_audio_path = os.path.join(
+                TEMP_DIR, f"audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            )
+            os.makedirs(TEMP_DIR, exist_ok=True)
+
+            with open(temp_audio_path, "w", encoding="utf-8") as f:
+                f.write(f"模拟音频文件（实际下载失败）\n")
+                f.write(f"播客: {podcast_name}\n")
+                f.write(f"期数: {episode_title}\n")
+                f.write(f"原始URL: {audio_url}\n")
+                f.write(f"错误: {e}\n")
+                f.write(f"时间: {datetime.now()}\n")
+
+            print(f"    ℹ️  创建模拟文件: {temp_audio_path}")
+    else:
+        # 没有URL或测试模式，创建模拟文件
+        temp_audio_path = os.path.join(
+            TEMP_DIR, f"audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        )
+        os.makedirs(TEMP_DIR, exist_ok=True)
+
+        with open(temp_audio_path, "w", encoding="utf-8") as f:
+            if test_mode:
+                f.write(f"测试模式音频文件\n")
+            elif not audio_url:
+                f.write(f"无音频URL的模拟文件\n")
+            else:
+                f.write(f"音频下载模块不可用的模拟文件\n")
+
+            f.write(f"播客: {podcast_name}\n")
+            f.write(f"期数: {episode_title}\n")
+            if audio_url:
+                f.write(f"原始URL: {audio_url}\n")
+            f.write(f"时间: {datetime.now()}\n")
+
+        if test_mode:
+            steps_completed.append("📥 测试模式")
+        elif not audio_url:
+            steps_completed.append("📥 无音频URL")
+        else:
+            steps_completed.append("📥 模拟下载")
 
     # 步骤2: 转文字
     print("  🎤 转文字...")
     transcript = ""
-    if TRANSCRIPTION_AVAILABLE and not test_mode:
+    if TRANSCRIPTION_AVAILABLE and not test_mode and temp_audio_path:
         try:
             transcript = transcribe_audio(temp_audio_path, podcast_name, episode_title)
             steps_completed.append("🎤 文字转录")
@@ -178,10 +249,19 @@ def process_single_episode(podcast_name, episode_info, test_mode=False):
             transcript = f"转录失败: {e}\n\n请检查转录配置。"
             steps_completed.append("🎤 转录失败")
     else:
-        transcript = (
-            f"测试模式或转录模块不可用\n播客: {podcast_name}\n期数: {episode_title}"
-        )
-        steps_completed.append("🎤 测试模式")
+        if test_mode:
+            transcript = (
+                f"测试模式 - 跳过实际转录\n播客: {podcast_name}\n期数: {episode_title}"
+            )
+            steps_completed.append("🎤 测试模式")
+        elif not temp_audio_path:
+            transcript = (
+                f"无音频文件 - 无法转录\n播客: {podcast_name}\n期数: {episode_title}"
+            )
+            steps_completed.append("🎤 无音频文件")
+        else:
+            transcript = f"转录模块不可用\n播客: {podcast_name}\n期数: {episode_title}"
+            steps_completed.append("🎤 转录不可用")
 
     # 步骤3: AI总结（待实现）
     print("  🧠 AI总结...")
@@ -206,8 +286,18 @@ def process_single_episode(podcast_name, episode_info, test_mode=False):
         )
 
         # 清理临时文件
-        if os.path.exists(temp_audio_path):
-            os.remove(temp_audio_path)
+        if temp_audio_path and os.path.exists(temp_audio_path):
+            try:
+                # 如果是.txt模拟文件，直接删除
+                if temp_audio_path.endswith(".txt"):
+                    os.remove(temp_audio_path)
+                    print(f"    🧹 清理模拟文件: {os.path.basename(temp_audio_path)}")
+                # 如果是真实音频文件，可以保留供后续使用或由定期清理任务处理
+                else:
+                    print(f"    💾 保留音频文件: {os.path.basename(temp_audio_path)}")
+                    print(f"      路径: {temp_audio_path}")
+            except Exception as e:
+                print(f"    ⚠️  清理文件失败: {e}")
 
         # 显示完成状态
         print(f"\n✅ 处理完成!")
@@ -417,6 +507,15 @@ def main():
     # 配置命令
     subparsers.add_parser("config", help="显示配置")
 
+    # 清理命令
+    cleanup_parser = subparsers.add_parser("cleanup", help="清理临时文件")
+    cleanup_parser.add_argument(
+        "--age", type=int, default=24, help="清理超过指定小时的文件（默认:24）"
+    )
+    cleanup_parser.add_argument(
+        "--dry-run", action="store_true", help="模拟运行，不实际删除"
+    )
+
     args = parser.parse_args()
 
     # 设置环境
@@ -510,6 +609,56 @@ def main():
         print(f"  数据库: {DB_PATH}")
         print(f"  临时文件: {TEMP_DIR}")
 
+    elif args.command == "cleanup":
+        # 清理临时文件
+        print(f"🧹 清理临时文件 (超过 {args.age} 小时)")
+        print(f"  目录: {TEMP_DIR}")
+
+        if args.dry_run:
+            print("  模式: 模拟运行（不实际删除）")
+
+        if AUDIO_DOWNLOAD_AVAILABLE:
+            try:
+                if args.dry_run:
+                    # 模拟运行：只列出文件
+                    print("\n📋 将清理的文件:")
+                    current_time = time.time()
+                    max_age_seconds = args.age * 3600
+
+                    deleted_count = 0
+                    total_size = 0
+
+                    for filename in os.listdir(TEMP_DIR):
+                        filepath = os.path.join(TEMP_DIR, filename)
+                        if os.path.isfile(filepath):
+                            file_age = current_time - os.path.getmtime(filepath)
+                            if file_age > max_age_seconds:
+                                file_size = os.path.getsize(filepath)
+                                print(
+                                    f"   - {filename} ({file_size} 字节, {file_age/3600:.1f} 小时前)"
+                                )
+                                deleted_count += 1
+                                total_size += file_size
+
+                    if deleted_count > 0:
+                        print(
+                            f"\n📊 模拟结果: 将删除 {deleted_count} 个文件, 释放 {total_size} 字节"
+                        )
+                    else:
+                        print("\nℹ️  没有需要清理的文件")
+
+                else:
+                    # 实际清理
+                    deleted_count, total_size = cleanup_temp_files(args.age)
+                    print(
+                        f"\n✅ 清理完成: 删除 {deleted_count} 个文件, 释放 {total_size} 字节"
+                    )
+
+            except Exception as e:
+                print(f"❌ 清理失败: {e}")
+        else:
+            print("❌ 音频下载模块不可用，无法执行清理")
+
     else:
         # 显示帮助
         parser.print_help()
@@ -518,6 +667,7 @@ def main():
         print("  2. 测试处理: podcast_processor.py process --name '播客名' --test")
         print("  3. 查看配置: podcast_processor.py config")
         print("  4. 查看历史: podcast_processor.py history")
+        print("  5. 清理文件: podcast_processor.py cleanup [--age 24] [--dry-run]")
 
     return 0
 
