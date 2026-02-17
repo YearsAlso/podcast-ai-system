@@ -5,14 +5,11 @@
 """
 
 import argparse
-import os
-import sys
-import json
-import time
-from datetime import datetime
-from pathlib import Path
-import sqlite3
 import hashlib
+import os
+import sqlite3
+import sys
+from datetime import datetime
 
 # 配置
 OBSIDIAN_VAULT = "/Volumes/MxStore/Project/YearsAlso"
@@ -63,7 +60,7 @@ def get_rss_feed(podcast_url):
         # 已经是RSS地址
         return podcast_url
     else:
-        print(f"⚠️  无法识别播客URL类型，请提供RSS地址")
+        print("⚠️  无法识别播客URL类型，请提供RSS地址")
         return None
 
 
@@ -125,7 +122,7 @@ def mark_as_processing(episode_info):
 
     cursor.execute(
         """
-    INSERT OR IGNORE INTO processed_podcasts 
+    INSERT OR IGNORE INTO processed_podcasts
     (podcast_name, episode_title, episode_url, status)
     VALUES (?, ?, ?, 'processing')
     """,
@@ -147,7 +144,7 @@ def mark_as_completed(episode_url, output_path):
 
     cursor.execute(
         """
-    UPDATE processed_podcasts 
+    UPDATE processed_podcasts
     SET status = 'completed', output_path = ?, processed_date = CURRENT_TIMESTAMP
     WHERE episode_url = ?
     """,
@@ -173,7 +170,7 @@ def download_audio_simple(audio_url, output_path):
     with open(output_path, "w") as f:
         f.write(f"# 模拟音频文件\n原始URL: {audio_url}\n下载时间: {datetime.now()}")
 
-    print(f"✅ 下载完成（模拟）")
+    print("✅ 下载完成（模拟）")
     return True
 
 

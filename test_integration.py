@@ -7,7 +7,6 @@ OpenClaw集成测试脚本
 import subprocess
 import os
 import sys
-from pathlib import Path
 
 
 def test_environment():
@@ -142,18 +141,18 @@ def test_openclaw_integration():
             )
 
             if result.returncode == 0:
-                print(f"   ✅ 命令执行成功")
+                print("   ✅ 命令执行成功")
                 # 显示部分输出
                 output_preview = result.stdout.strip()[:100]
                 if output_preview:
                     print(f"     输出: {output_preview}...")
             else:
-                print(f"   ❌ 命令执行失败")
+                print("   ❌ 命令执行失败")
                 print(f"     错误: {result.stderr[:200]}")
                 all_passed = False
 
         except subprocess.TimeoutExpired:
-            print(f"   ⚠️ 命令执行超时")
+            print("   ⚠️ 命令执行超时")
         except Exception as e:
             print(f"   ❌ 命令执行异常: {e}")
             all_passed = False
@@ -166,8 +165,8 @@ def generate_openclaw_commands():
     print("\n📋 生成OpenClaw命令...")
 
     commands = {
-        "处理本地播客": "cd /Volumes/MxStore/Project/YearsAlso/系统方案/播客处理系统 && python3 simple_podcast_processor.py --file '音频文件路径' --podcast '播客名称' --episode '期数标题'",
-        "处理在线播客": "cd /Volumes/MxStore/Project/YearsAlso/系统方案/播客处理系统 && python3 simple_podcast_processor.py --url '音频URL' --podcast '播客名称' --episode '期数标题'",
+        "处理本地播客": "cd /Volumes/MxStore/Project/YearsAlso/系统方案/播客处理系统 && python3 simple_podcast_processor.py --file '音频文件路径' --podcast '播客名称' --episode '期数标题'",  # noqa: E501
+        "处理在线播客": "cd /Volumes/MxStore/Project/YearsAlso/系统方案/播客处理系统 && python3 simple_podcast_processor.py --url '音频URL' --podcast '播客名称' --episode '期数标题'",  # noqa: E501
         "查看帮助": "cd /Volumes/MxStore/Project/YearsAlso/系统方案/播客处理系统 && python3 simple_podcast_processor.py --help",
         "测试环境": "cd /Volumes/MxStore/Project/YearsAlso/系统方案/播客处理系统 && python3 test_integration.py",
     }
@@ -177,9 +176,9 @@ def generate_openclaw_commands():
 
     for name, cmd in commands.items():
         print(f"\n🔹 {name}:")
-        print(f"   ```bash")
+        print("   ```bash")
         print(f"   {cmd}")
-        print(f"   ```")
+        print("   ```")
 
     print("-" * 60)
 

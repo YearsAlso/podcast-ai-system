@@ -12,12 +12,10 @@ from datetime import datetime
 
 # 导入配置
 from config import (
-    OBSIDIAN_VAULT,
     PODCASTS_DIR,
     PROJECT_ROOT,
     DB_PATH,
     TEMP_DIR,
-    DEFAULT_PROCESS_LIMIT,
     validate_config,
 )
 
@@ -215,7 +213,7 @@ tags: [播客, 待处理]
 
 ### 当前功能状态
 - ✅ 系统框架: 已完成
-- ✅ 数据库记录: 已完成  
+- ✅ 数据库记录: 已完成
 - ✅ Obsidian集成: 已完成
 - 🔄 音频下载: 待实现
 - 🔄 文字转录: 待实现（需要配置Whisper）
@@ -260,7 +258,7 @@ def record_processed_episode(podcast_name, episode_info, output_path):
 
     cursor.execute(
         """
-    INSERT INTO processed_podcasts 
+    INSERT INTO processed_podcasts
     (podcast_name, episode_title, episode_url, output_path, status)
     VALUES (?, ?, ?, ?, 'completed')
     """,
@@ -368,9 +366,9 @@ def main():
             output_path = process_single_episode(args.name, episode_info)
 
             if output_path:
-                print(f"\n✅ 测试完成！")
+                print("\n✅ 测试完成！")
                 print(f"📁 笔记已创建: {output_path}")
-                print(f"💡 这是一个框架测试文件，实际功能需要进一步配置。")
+                print("💡 这是一个框架测试文件，实际功能需要进一步配置。")
             else:
                 print("❌ 测试失败")
 

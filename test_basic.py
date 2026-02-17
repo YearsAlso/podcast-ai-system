@@ -5,7 +5,6 @@
 """
 
 import sys
-import os
 
 
 def test_imports():
@@ -13,7 +12,7 @@ def test_imports():
     print("Testing imports...")
 
     try:
-        import config
+        import config  # noqa: F401
 
         print("✅ config module imported successfully")
     except ImportError as e:
@@ -62,7 +61,7 @@ def test_main_script():
 
     try:
         # 模拟命令行参数
-        import argparse
+        import argparse  # noqa: F401
 
         # 测试帮助命令
         print("Testing --help command...")

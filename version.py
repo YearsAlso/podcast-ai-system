@@ -6,7 +6,6 @@
 
 import re
 import os
-import sys
 from datetime import datetime
 
 
@@ -139,7 +138,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="命令")
 
     # 显示当前版本
-    show_parser = subparsers.add_parser("show", help="显示当前版本")
+    subparsers.add_parser("show", help="显示当前版本")
 
     # 更新版本
     bump_parser = subparsers.add_parser("bump", help="更新版本号")

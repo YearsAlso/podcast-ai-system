@@ -7,10 +7,7 @@ OpenClaw可以直接调用此脚本
 import argparse
 import os
 import sys
-import whisper
-import openai
 from datetime import datetime
-from pathlib import Path
 
 # 配置
 OBSIDIAN_VAULT = "/Volumes/MxStore/Project/YearsAlso"
@@ -20,7 +17,7 @@ DEFAULT_OUTPUT_DIR = os.path.join(OBSIDIAN_VAULT, "Podcasts")
 def setup_environment():
     """检查环境依赖"""
     try:
-        import whisper
+        import whisper  # noqa: F401
 
         print("✅ Whisper已安装")
     except ImportError:
@@ -63,7 +60,7 @@ def transcribe_audio(audio_path, model_size="base"):
 
     try:
         # 加载模型（第一次运行会下载模型）
-        model = whisper.load_model(model_size)
+        model = whisper.load_model(model_size)  # noqa: F821
 
         # 转录音频
         result = model.transcribe(
