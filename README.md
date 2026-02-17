@@ -1,158 +1,246 @@
-# 🎙️ OpenClaw 播客处理系统
+# 🎙️ Podcast AI Processing System
 
-最简单的播客转文字AI总结方案，专为OpenClaw设计。
+[![GitHub](https://img.shields.io/github/license/YearsAlso/podcast-ai-system)](https://github.com/YearsAlso/podcast-ai-system/blob/main/LICENSE)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-Integrated-green)](https://openclaw.ai/)
+
+自动爬取苹果播客 → 音频转文字 → AI智能总结 → 保存到Obsidian知识库
+
+## ✨ 功能特性
+
+### ✅ 已实现
+- **系统框架** - 完整的命令行界面
+- **数据库管理** - SQLite存储订阅和处理记录
+- **Obsidian集成** - 自动生成Markdown笔记
+- **订阅管理** - 添加、列出、管理播客订阅
+- **配置系统** - 灵活的配置文件
+
+### 🔄 待配置（需要额外设置）
+- **音频转文字** - 使用OpenAI Whisper（需要安装）
+- **AI智能总结** - 使用GPT模型（需要API key）
+- **RSS解析** - 自动获取播客更新
+- **音频下载** - 自动下载播客音频
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### 1. 克隆仓库
 ```bash
-cd /Volumes/MxStore/Project/YearsAlso/系统方案/播客处理系统
-chmod +x install_deps.sh
-./install_deps.sh
+git clone https://github.com/YearsAlso/podcast-ai-system.git
+cd podcast-ai-system
 ```
 
-### 2. 基本使用
-
-#### 处理本地音频文件
+### 2. 安装依赖
 ```bash
-python3 simple_podcast_processor.py \
-  --file "/path/to/your/audio.mp3" \
-  --podcast "播客名称" \
-  --episode "第XX期：标题"
+# 运行安装脚本
+chmod +x setup.sh
+./setup.sh
+
+# 或手动安装
+pip install requests feedparser
 ```
 
-#### 处理在线音频
-```bash
-python3 simple_podcast_processor.py \
-  --url "https://example.com/podcast.mp3" \
-  --podcast "播客名称" \
-  --episode "第XX期：标题"
-```
-
-### 3. OpenClaw集成
-
-#### 方法一：直接exec调用
+### 3. 配置系统
+编辑 `config.py` 设置你的Obsidian知识库路径：
 ```python
-# 在OpenClaw中执行
-exec("cd /Volumes/MxStore/Project/YearsAlso/系统方案/播客处理系统 && python3 simple_podcast_processor.py --file 'audio.mp3' --podcast '测试播客' --episode '测试期数'")
+OBSIDIAN_VAULT = "/path/to/your/obsidian/vault"
 ```
 
-#### 方法二：创建快捷命令
-在OpenClaw的TOOLS.md中添加：
-```markdown
-### 播客处理
-- 处理播客: `cd /Volumes/MxStore/Project/YearsAlso/系统方案/播客处理系统 && python3 simple_podcast_processor.py`
+### 4. 基本使用
+```bash
+# 查看帮助
+python podcast_processor.py --help
+
+# 添加播客订阅
+python podcast_processor.py add --name "得到" --rss "https://example.com/rss"
+
+# 测试处理（生成示例笔记）
+python podcast_processor.py process --name "得到" --test
+
+# 查看处理历史
+python podcast_processor.py history
 ```
 
-## 📁 文件结构
+## 📁 项目结构
 
 ```
-系统方案/播客处理系统/
-├── simple_podcast_processor.py  # 主处理脚本
-├── install_deps.sh              # 依赖安装脚本
-├── README.md                    # 说明文档
-└── config.example.json          # 配置文件示例
+podcast-ai-system/
+├── podcast_processor.py     # 主处理脚本
+├── config.py                # 配置文件
+├── setup.sh                 # 安装脚本
+├── README.md                # 说明文档
+├── .gitignore               # Git忽略文件
+├── apple_podcast_auto.py    # 苹果播客专用处理
+├── simple_podcast_processor.py  # 简单处理脚本
+└── templates/               # Markdown模板
 ```
-
-输出文件保存在：
-```
-/Volumes/MxStore/Project/YearsAlso/Podcasts/
-└── [播客名称]/
-    └── YYYY-MM-DD_[播客名称]_[期数标题].md
-```
-
-## 🛠️ 功能特点
-
-### ✅ 已实现
-- [x] 音频转文字（Whisper）
-- [x] 自动保存到Obsidian
-- [x] 支持本地文件和在线URL
-- [x] 简单的Markdown模板
-- [x] 自动清理临时文件
-
-### 🔄 待实现（可选）
-- [ ] OpenAI AI总结（需要API key）
-- [ ] 说话人分离
-- [ ] RSS订阅自动抓取
-- [ ] 图形界面
-- [ ] 批量处理
 
 ## ⚙️ 配置说明
 
-### 1. 基本配置
-脚本使用默认配置，无需额外设置。
+### 核心配置（config.py）
+```python
+# Obsidian知识库路径
+OBSIDIAN_VAULT = "/Volumes/MxStore/Project/YearsAlso"
 
-### 2. 高级配置（可选）
-如需使用AI总结功能，需要：
-1. 获取OpenAI API key
-2. 在脚本中配置API key
-3. 启用`summarize_with_gpt()`函数
+# 播客笔记保存目录
+PODCASTS_DIR = os.path.join(OBSIDIAN_VAULT, "Podcasts")
 
-## 🧪 测试
-
-### 测试1：查看帮助
-```bash
-python3 simple_podcast_processor.py --help
+# 转录配置
+WHISPER_MODEL_SIZE = "base"  # base, small, medium, large
+TRANSCRIPT_LANGUAGE = "zh"   # 转录语言
 ```
 
-### 测试2：处理示例音频
-```bash
-# 下载测试音频（可选）
-curl -o test_audio.mp3 "https://example.com/test.mp3"
+### 启用完整功能
 
-# 处理测试音频
-python3 simple_podcast_processor.py \
-  --file "test_audio.mp3" \
-  --podcast "测试播客" \
-  --episode "测试期数"
+1. **安装Whisper（音频转文字）**
+   ```bash
+   pip install openai-whisper
+   brew install ffmpeg  # macOS
+   ```
+
+2. **配置OpenAI API（AI总结）**
+   ```python
+   # 在config.py中设置
+   AI_SUMMARY_ENABLED = True
+   OPENAI_API_KEY = "your-api-key-here"
+   ```
+
+3. **实现RSS解析**
+   - 安装feedparser库
+   - 实现真正的RSS解析逻辑
+
+## 🔌 OpenClaw集成
+
+### 简单集成
+```python
+# 在OpenClaw中直接调用
+exec("cd ~/Project/podcast-ai-system && python podcast_processor.py process --name '得到' --test")
 ```
 
-## 🔍 故障排除
+### 创建OpenClaw Skill
+在OpenClaw的TOOLS.md中添加：
+```markdown
+### 🎙️ 播客处理
+- 处理播客: `cd ~/Project/podcast-ai-system && python podcast_processor.py process --name`
+- 添加订阅: `cd ~/Project/podcast-ai-system && python podcast_processor.py add --name --rss`
+- 查看历史: `cd ~/Project/podcast-ai-system && python podcast_processor.py history`
+```
 
-### 常见问题
+## 📊 使用示例
 
-1. **Whisper模型下载失败**
-   ```bash
-   # 手动下载模型
-   python3 -c "import whisper; whisper.load_model('base')"
-   ```
+### 添加真实播客
+```bash
+# 添加得到播客
+python podcast_processor.py add --name "得到" --rss "https://rss.example.com/dedao"
 
-2. **FFmpeg未安装**
-   ```bash
-   # macOS
-   brew install ffmpeg
-   
-   # Ubuntu/Debian
-   sudo apt install ffmpeg
-   ```
+# 添加疯投圈
+python podcast_processor.py add --name "疯投圈" --rss "https://rss.example.com/fengtouquan"
 
-3. **权限问题**
-   ```bash
-   chmod +x *.py *.sh
-   ```
+# 列出所有订阅
+python podcast_processor.py list
+```
 
-### 日志查看
-脚本会在控制台输出详细日志，包括：
-- 下载进度
-- 转录状态
-- 文件保存位置
+### 处理播客
+```bash
+# 处理最新一期（测试模式）
+python podcast_processor.py process --name "得到" --test
 
-## 📈 性能说明
+# 查看处理历史
+python podcast_processor.py history --limit 10
+```
 
-### 硬件要求
-- **CPU**: 现代处理器即可
-- **内存**: 至少2GB空闲内存
-- **存储**: Whisper模型约100-300MB
+### 查看配置
+```bash
+python podcast_processor.py config
+```
 
-### 处理时间
-- 1分钟音频：约30-60秒
-- 30分钟音频：约5-10分钟
-- 1小时音频：约15-20分钟
+## 🛠️ 开发指南
 
-## 🤝 贡献
+### 项目架构
+- **podcast_processor.py** - 主入口，命令行界面
+- **config.py** - 集中式配置管理
+- **数据库** - SQLite存储订阅和处理记录
+- **模板系统** - Markdown笔记模板
 
-欢迎提交Issue和Pull Request！
+### 扩展功能
+要添加新功能：
+1. 在 `config.py` 中添加配置项
+2. 在 `podcast_processor.py` 中添加处理逻辑
+3. 创建新的模块文件
+
+### 数据库模式
+```sql
+-- 已处理播客
+CREATE TABLE processed_podcasts (
+    id INTEGER PRIMARY KEY,
+    podcast_name TEXT,
+    episode_title TEXT,
+    episode_url TEXT UNIQUE,
+    output_path TEXT,
+    status TEXT
+);
+
+-- 播客订阅
+CREATE TABLE podcast_subscriptions (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE,
+    rss_url TEXT,
+    enabled BOOLEAN
+);
+```
+
+## 📈 路线图
+
+### 阶段1：核心框架 ✅
+- [x] 系统框架搭建
+- [x] 数据库设计
+- [x] Obsidian集成
+- [x] 命令行界面
+
+### 阶段2：完整功能 🔄
+- [ ] 音频转文字集成（Whisper）
+- [ ] AI智能总结（GPT）
+- [ ] RSS自动解析
+- [ ] 音频下载功能
+
+### 阶段3：高级功能 📅
+- [ ] Web管理界面
+- [ ] 多用户支持
+- [ ] 智能推荐系统
+- [ ] 知识图谱集成
+
+## 🤝 贡献指南
+
+1. Fork 本仓库
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
 
 ## 📄 许可证
 
-MIT License
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
+
+## 📞 支持
+
+遇到问题？
+1. 查看 [Issues](https://github.com/YearsAlso/podcast-ai-system/issues)
+2. 检查日志文件：`logs/podcast_processor.log`
+3. 运行配置测试：`python config.py`
+
+## 🙏 致谢
+
+- [OpenAI Whisper](https://github.com/openai/whisper) - 音频转文字
+- [OpenClaw](https://openclaw.ai/) - AI助手平台
+- [Obsidian](https://obsidian.md/) - 知识管理工具
+
+---
+
+**开始使用：**
+```bash
+git clone https://github.com/YearsAlso/podcast-ai-system.git
+cd podcast-ai-system
+./setup.sh
+python podcast_processor.py --help
+```
+
+访问仓库：https://github.com/YearsAlso/podcast-ai-system
