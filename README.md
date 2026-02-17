@@ -3,6 +3,9 @@
 [![GitHub](https://img.shields.io/github/license/YearsAlso/podcast-ai-system)](https://github.com/YearsAlso/podcast-ai-system/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-Integrated-green)](https://openclaw.ai/)
+[![CI/CD](https://github.com/YearsAlso/podcast-ai-system/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/YearsAlso/podcast-ai-system/actions/workflows/ci-cd.yml)
+[![Docker](https://img.shields.io/badge/docker-available-blue)](https://ghcr.io/YearsAlso/podcast-ai-system)
+[![Release](https://img.shields.io/github/v/release/YearsAlso/podcast-ai-system)](https://github.com/YearsAlso/podcast-ai-system/releases)
 
 自动爬取苹果播客 → 音频转文字 → AI智能总结 → 保存到Obsidian知识库
 
@@ -215,6 +218,54 @@ CREATE TABLE podcast_subscriptions (
 3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 开启 Pull Request
+
+## 🚀 CI/CD 自动化
+
+### GitHub Actions 工作流
+
+项目包含完整的CI/CD管道：
+
+1. **CI/CD Pipeline** (`ci-cd.yml`)
+   - 代码质量检查（black, flake8）
+   - 自动化测试（pytest）
+   - Docker镜像构建和推送
+   - 自动创建GitHub Release
+
+2. **每日构建** (`daily-build.yml`)
+   - 每天自动运行测试
+   - 构建Docker镜像
+   - 失败时发送通知
+
+3. **自动版本管理** (`auto-tag.yml`)
+   - 检测重大代码变更
+   - 自动创建版本标签
+   - 根据变更类型更新版本号
+
+### Docker 镜像
+
+```bash
+# 拉取最新镜像
+docker pull ghcr.io/yearsalso/podcast-ai-system:latest
+
+# 运行容器
+docker run -it --rm \
+  -v $(pwd)/config.py:/app/config.py \
+  ghcr.io/yearsalso/podcast-ai-system:latest \
+  python podcast_processor.py --help
+```
+
+### 版本管理
+
+```bash
+# 查看当前版本
+python version.py show
+
+# 更新版本号
+python version.py bump patch  # 或 minor, major
+
+# 创建Git标签
+python version.py tag --push
+```
 
 ## 📄 许可证
 
