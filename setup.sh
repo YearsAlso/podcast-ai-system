@@ -32,6 +32,27 @@ fi
 echo "📦 安装Python依赖..."
 pip3 install requests feedparser
 
+# 安装转录相关依赖（可选）
+echo "🎤 转录方案选择:"
+echo "  1. OpenAI Whisper API（推荐，需要API key）"
+echo "  2. faster-whisper（本地轻量版）"
+echo "  3. 简化模式（默认，无需安装）"
+read -p "选择转录方案 (1/2/3，默认3): " -n 1 -r
+echo
+
+if [[ $REPLY =~ ^[1]$ ]]; then
+    echo "🔗 安装OpenAI Whisper API支持..."
+    pip3 install openai
+    echo "✅ OpenAI库已安装"
+    echo "💡 需要在 config.py 中设置 OPENAI_API_KEY"
+    
+elif [[ $REPLY =~ ^[2]$ ]]; then
+    echo "⚡ 安装faster-whisper..."
+    pip3 install faster-whisper
+    echo "✅ faster-whisper已安装"
+    echo "💡 建议同时安装FFmpeg以支持更多音频格式"
+fi
+
 # 设置执行权限
 echo "🔧 设置脚本权限..."
 chmod +x "$PROJECT_DIR"/*.py
@@ -73,7 +94,12 @@ echo "- 系统代码在: $PROJECT_DIR"
 echo "- 生成的笔记在: $PODCASTS_DIR"
 echo "- 需要进一步配置Whisper和AI总结功能"
 echo ""
-echo "🔧 待配置功能:"
-echo "  - 音频转文字: 需要安装Whisper"
+echo "🔧 转录功能配置:"
+echo "  - 当前模式: 简化模式（默认）"
+echo "  - 可选方案: OpenAI API / faster-whisper / whisper.cpp"
+echo "  - 配置方法: 修改 config.py 中的 TRANSCRIPTION_MODE"
+echo ""
+echo "🔧 其他待配置功能:"
 echo "  - AI总结: 需要配置OpenAI API"
 echo "  - RSS解析: 需要实现真正的解析逻辑"
+echo "  - 音频下载: 需要实现下载功能"

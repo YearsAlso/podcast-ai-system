@@ -19,6 +19,15 @@ from config import (
     validate_config,
 )
 
+# 导入转录模块
+try:
+    from transcription import transcribe_audio, get_transcription_info
+
+    TRANSCRIPTION_AVAILABLE = True
+except ImportError:
+    TRANSCRIPTION_AVAILABLE = False
+    print("⚠️  转录模块不可用，使用简化模式")
+
 
 def setup_environment():
     """设置环境"""
@@ -118,36 +127,95 @@ def list_subscriptions():
     return subscriptions
 
 
-def process_single_episode(podcast_name, episode_info):
-    """处理单个播客期数（简化版）"""
+def process_single_episode(podcast_name, episode_info, test_mode=False):
+    """处理单个播客期数（支持多种转录模式）"""
 
-    print(f"\n🎬 处理: {episode_info.get('title', '未知标题')}")
+    episode_title = episode_info.get("title", "未知标题")
+    print(f"\n🎬 处理: {episode_title}")
 
     # 检查是否已处理
     if check_if_processed(episode_info.get("audio_url", "")):
         print("⏭️  已处理过，跳过")
         return None
 
-    # 模拟处理步骤
-    steps = [
-        ("📥 下载音频", True),
-        ("🎤 转文字", True),
-        ("🧠 AI总结", False),  # 需要配置
-        ("📝 保存笔记", True),
-    ]
+    # 显示转录模式信息
+    if TRANSCRIPTION_AVAILABLE:
+        try:
+            info = get_transcription_info()
+            print(f"📋 转录模式: {info['current_mode']}")
+            print(f"   可用模式: {', '.join(info['available_modes'])}")
+        except:
+            pass
 
-    for step_name, implemented in steps:
-        status = "✅" if implemented else "⚠️ （待实现）"
-        print(f"  {status} {step_name}")
+    # 处理步骤
+    steps_completed = []
 
-    # 创建Obsidian笔记
-    output_path = create_obsidian_note_simple(podcast_name, episode_info)
+    # 步骤1: 下载音频（模拟）
+    print("  📥 下载音频...")
+    # 这里实际应该下载音频文件
+    # 为了演示，我们创建一个模拟音频文件
+    temp_audio_path = os.path.join(
+        TEMP_DIR, f"audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    )
+    os.makedirs(TEMP_DIR, exist_ok=True)
+
+    with open(temp_audio_path, "w", encoding="utf-8") as f:
+        f.write(f"模拟音频文件: {episode_title}\n")
+        f.write(f"播客: {podcast_name}\n")
+        f.write(f"时间: {datetime.now()}\n")
+
+    steps_completed.append("📥 音频准备")
+
+    # 步骤2: 转文字
+    print("  🎤 转文字...")
+    transcript = ""
+    if TRANSCRIPTION_AVAILABLE and not test_mode:
+        try:
+            transcript = transcribe_audio(temp_audio_path, podcast_name, episode_title)
+            steps_completed.append("🎤 文字转录")
+        except Exception as e:
+            print(f"  ⚠️  转录失败: {e}")
+            transcript = f"转录失败: {e}\n\n请检查转录配置。"
+            steps_completed.append("🎤 转录失败")
+    else:
+        transcript = (
+            f"测试模式或转录模块不可用\n播客: {podcast_name}\n期数: {episode_title}"
+        )
+        steps_completed.append("🎤 测试模式")
+
+    # 步骤3: AI总结（待实现）
+    print("  🧠 AI总结...")
+    summary = (
+        f"AI总结功能需要配置OpenAI API key\n在config.py中设置AI_SUMMARY_ENABLED = True"
+    )
+    steps_completed.append("🧠 AI总结待配置")
+
+    # 步骤4: 保存笔记
+    print("  📝 保存笔记...")
+    output_path = create_obsidian_note_with_transcript(
+        podcast_name, episode_info, transcript, summary
+    )
 
     if output_path:
-        print(f"📁 笔记已保存: {output_path}")
-        return output_path
+        steps_completed.append("📝 笔记保存")
+        print(f"  📁 笔记已保存: {output_path}")
 
-    return None
+        # 记录到数据库
+        record_processed_episode(
+            podcast_name, episode_info, output_path, len(transcript)
+        )
+
+        # 清理临时文件
+        if os.path.exists(temp_audio_path):
+            os.remove(temp_audio_path)
+
+        # 显示完成状态
+        print(f"\n✅ 处理完成!")
+        print(f"   完成步骤: {', '.join(steps_completed)}")
+        return output_path
+    else:
+        print("❌ 保存笔记失败")
+        return None
 
 
 def check_if_processed(episode_url):
@@ -170,7 +238,14 @@ def check_if_processed(episode_url):
 
 
 def create_obsidian_note_simple(podcast_name, episode_info):
-    """创建简单的Obsidian笔记"""
+    """创建简单的Obsidian笔记（兼容旧版本）"""
+    return create_obsidian_note_with_transcript(podcast_name, episode_info, "", "")
+
+
+def create_obsidian_note_with_transcript(
+    podcast_name, episode_info, transcript, summary
+):
+    """创建包含转录文字的Obsidian笔记"""
 
     # 创建播客目录
     safe_name = podcast_name.replace(" ", "_").replace("/", "_")
@@ -185,6 +260,15 @@ def create_obsidian_note_simple(podcast_name, episode_info):
     filename = f"{date_str}_{safe_name}_{safe_title}.md"
     output_path = os.path.join(podcast_dir, filename)
 
+    # 获取转录模式信息
+    transcription_mode = "未知"
+    if TRANSCRIPTION_AVAILABLE:
+        try:
+            info = get_transcription_info()
+            transcription_mode = info["current_mode"]
+        except:
+            transcription_mode = "检测失败"
+
     # 构建内容
     content = f"""---
 podcast: "{podcast_name}"
@@ -194,8 +278,10 @@ processed_date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 source: "播客处理系统"
 audio_url: "{episode_info.get('audio_url', '')}"
 duration: "{episode_info.get('duration', '未知')}"
-status: "框架测试"
-tags: [播客, 待处理]
+transcription_mode: "{transcription_mode}"
+transcript_length: {len(transcript)}
+status: "已处理"
+tags: [播客, 转录]
 ---
 
 ## 📋 播客信息
@@ -203,38 +289,48 @@ tags: [播客, 待处理]
 - **期数标题**: {episode_info.get('title', '未知标题')}
 - **发布时间**: {date_str}
 - **音频时长**: {episode_info.get('duration', '未知')}
+- **转录模式**: {transcription_mode}
+- **转录长度**: {len(transcript)} 字符
 - **原始链接**: {episode_info.get('audio_url', '')}
 
 ## 📝 描述
 {episode_info.get('description', '无描述')}
 
-## 🔧 处理状态
-此文件由播客处理系统框架生成。
+## 🎤 文字转录
+{transcript if transcript else '*转录功能未启用或转录失败*'}
 
-### 当前功能状态
-- ✅ 系统框架: 已完成
-- ✅ 数据库记录: 已完成
-- ✅ Obsidian集成: 已完成
-- 🔄 音频下载: 待实现
-- 🔄 文字转录: 待实现（需要配置Whisper）
-- 🔄 AI总结: 待实现（需要配置OpenAI API）
+## 🧠 AI总结
+{summary if summary else '*AI总结功能需要配置OpenAI API key*'}
 
-### 下一步操作
-1. 配置Whisper进行音频转文字
-2. 实现音频下载功能
-3. 配置AI总结功能
-4. 添加真正的RSS解析
+## 🔧 系统状态
 
-## 💡 使用说明
-1. 系统代码位于: `~/Project/podcast-ai-system/`
-2. 生成的笔记在此目录: `{PODCASTS_DIR}/`
-3. 可以在下方添加个人笔记
+### 📊 转录模式: {transcription_mode}
+
+**可用选项**:
+1. **openai_api** - OpenAI Whisper API（在线，需要API key）
+2. **faster_whisper** - 本地轻量版（需要安装）
+3. **whisper_cpp** - 纯CPU版本（需要编译）
+4. **simplified** - 简化模式（仅下载，不转录）
+
+**配置方法**:
+在 `config.py` 中修改 `TRANSCRIPTION_MODE` 设置
+
+### 🚀 功能状态
+- ✅ 系统框架
+- ✅ 数据库管理  
+- ✅ Obsidian集成
+- ✅ 订阅管理
+- {'✅' if transcript and '转录失败' not in transcript else '🔄'} 文字转录 ({transcription_mode})
+- 🔄 AI智能总结（需要OpenAI API）
+- 🔄 RSS解析（需要feedparser）
+- 🔄 音频下载（需要实现）
 
 ## 📋 个人笔记
 <!-- 在这里添加你的思考和笔记 -->
 
 ---
 *自动生成于 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
+*转录模式: {transcription_mode}*
 """
 
     # 保存文件
@@ -242,16 +338,15 @@ tags: [播客, 待处理]
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(content)
 
-        # 记录到数据库
-        record_processed_episode(podcast_name, episode_info, output_path)
-
         return output_path
     except Exception as e:
         print(f"❌ 保存笔记失败: {e}")
         return None
 
 
-def record_processed_episode(podcast_name, episode_info, output_path):
+def record_processed_episode(
+    podcast_name, episode_info, output_path, transcript_length=0
+):
     """记录已处理的播客"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -259,14 +354,15 @@ def record_processed_episode(podcast_name, episode_info, output_path):
     cursor.execute(
         """
     INSERT INTO processed_podcasts
-    (podcast_name, episode_title, episode_url, output_path, status)
-    VALUES (?, ?, ?, ?, 'completed')
+    (podcast_name, episode_title, episode_url, output_path, status, transcript_length)
+    VALUES (?, ?, ?, ?, 'completed', ?)
     """,
         (
             podcast_name,
             episode_info.get("title", "未知标题"),
             episode_info.get("audio_url", ""),
             output_path,
+            transcript_length,
         ),
     )
 

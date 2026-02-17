@@ -63,17 +63,53 @@ python podcast_processor.py process --name "得到" --test
 python podcast_processor.py history
 ```
 
+## 🎤 多种转录方案
+
+系统支持多种音频转录方案，避免依赖复杂的Whisper安装：
+
+### 方案1: OpenAI Whisper API（推荐）
+```python
+# 在 config.py 中配置
+TRANSCRIPTION_MODE = "openai_api"
+OPENAI_API_KEY = "你的API key"
+```
+**优点**: 无需本地安装，准确率高  
+**安装**: `pip install openai`
+
+### 方案2: faster-whisper（本地轻量版）
+```python
+TRANSCRIPTION_MODE = "faster_whisper"
+```
+**优点**: 本地运行，速度快，内存占用小  
+**安装**: `pip install faster-whisper`
+
+### 方案3: whisper.cpp（纯CPU）
+```python
+TRANSCRIPTION_MODE = "whisper_cpp"
+```
+**优点**: 纯CPU运行，无需GPU，跨平台  
+**安装**: 需要编译，参考 https://github.com/ggerganov/whisper.cpp
+
+### 方案4: 简化模式（默认）
+```python
+TRANSCRIPTION_MODE = "simplified"
+```
+**优点**: 无需任何依赖，快速验证系统  
+**功能**: 仅下载和保存音频信息，不实际转录
+
 ## 📁 项目结构
 
 ```
 podcast-ai-system/
 ├── podcast_processor.py     # 主处理脚本
 ├── config.py                # 配置文件
+├── transcription.py         # 多方案转录模块
 ├── setup.sh                 # 安装脚本
 ├── README.md                # 说明文档
 ├── .gitignore               # Git忽略文件
 ├── apple_podcast_auto.py    # 苹果播客专用处理
 ├── simple_podcast_processor.py  # 简单处理脚本
+├── version.py               # 版本管理
 └── templates/               # Markdown模板
 ```
 

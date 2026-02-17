@@ -27,13 +27,29 @@ TEMP_DIR = "/tmp/podcast_processor"
 # 默认处理最新几期
 DEFAULT_PROCESS_LIMIT = 3
 
-# 转录模型大小（base, small, medium, large）
-WHISPER_MODEL_SIZE = "base"
+# ==================== 转录配置 ====================
+
+# 转录模式选择（按优先级顺序尝试）:
+# 1. "openai_api" - OpenAI Whisper API（需要API key）
+# 2. "faster_whisper" - 本地faster-whisper（需要安装）
+# 3. "whisper_cpp" - whisper.cpp（纯CPU，需要编译）
+# 4. "simplified" - 简化模式（仅下载，不转录）
+TRANSCRIPTION_MODE = "simplified"
+
+# OpenAI API配置（如果使用openai_api模式）
+OPENAI_API_KEY = ""  # 在此处填入你的OpenAI API key
+OPENAI_WHISPER_MODEL = "whisper-1"
+
+# faster-whisper配置
+FASTER_WHISPER_MODEL_SIZE = "base"  # tiny, base, small, medium, large
+FASTER_WHISPER_DEVICE = "cpu"  # cpu 或 cuda
+FASTER_WHISPER_COMPUTE_TYPE = "int8"  # int8, int16, float16, float32
 
 # 转录语言（zh, en, ja等）
 TRANSCRIPT_LANGUAGE = "zh"
 
-# AI总结配置
+# ==================== AI总结配置 ====================
+
 AI_SUMMARY_ENABLED = False
 AI_MODEL = "gpt-3.5-turbo"
 AI_MAX_TOKENS = 1000
@@ -90,7 +106,7 @@ def get_config_summary():
         "db_path": DB_PATH,
         "temp_dir": TEMP_DIR,
         "default_limit": DEFAULT_PROCESS_LIMIT,
-        "whisper_model": WHISPER_MODEL_SIZE,
+        "transcription_mode": TRANSCRIPTION_MODE,
         "language": TRANSCRIPT_LANGUAGE,
         "ai_summary_enabled": AI_SUMMARY_ENABLED,
     }
