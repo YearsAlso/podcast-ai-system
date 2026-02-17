@@ -42,11 +42,7 @@ AI_MAX_TOKENS = 1000
 
 # 默认播客订阅（可以在运行时覆盖）
 DEFAULT_SUBSCRIPTIONS = [
-    {
-        "name": "测试播客",
-        "rss": "https://example.com/podcast.rss",
-        "enabled": True
-    }
+    {"name": "测试播客", "rss": "https://example.com/podcast.rss", "enabled": True}
 ]
 
 # ==================== 输出配置 ====================
@@ -59,29 +55,31 @@ LOG_FILE = os.path.join(PROJECT_ROOT, "logs", "podcast_processor.log")
 
 # ==================== 验证配置 ====================
 
+
 def validate_config():
     """验证配置是否有效"""
     errors = []
-    
+
     # 检查Obsidian目录
     if not os.path.exists(OBSIDIAN_VAULT):
         errors.append(f"Obsidian知识库不存在: {OBSIDIAN_VAULT}")
-    
+
     # 创建必要的目录
     directories = [
         PODCASTS_DIR,
         os.path.join(PROJECT_ROOT, "logs"),
         os.path.join(PROJECT_ROOT, "templates"),
-        TEMP_DIR
+        TEMP_DIR,
     ]
-    
+
     for directory in directories:
         try:
             os.makedirs(directory, exist_ok=True)
         except Exception as e:
             errors.append(f"无法创建目录 {directory}: {e}")
-    
+
     return errors
+
 
 def get_config_summary():
     """获取配置摘要"""
@@ -94,8 +92,9 @@ def get_config_summary():
         "default_limit": DEFAULT_PROCESS_LIMIT,
         "whisper_model": WHISPER_MODEL_SIZE,
         "language": TRANSCRIPT_LANGUAGE,
-        "ai_summary_enabled": AI_SUMMARY_ENABLED
+        "ai_summary_enabled": AI_SUMMARY_ENABLED,
     }
+
 
 if __name__ == "__main__":
     # 测试配置
