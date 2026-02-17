@@ -39,6 +39,16 @@ except ImportError:
     AUDIO_DOWNLOAD_AVAILABLE = False
     print("⚠️  音频下载模块不可用，使用模拟下载")
 
+# 导入RSS解析模块
+try:
+    from rss_parser import parse_rss_feed, get_latest_episodes
+    from markdown_generator import save_episode_to_markdown, save_feed_summary_to_markdown
+
+    RSS_PARSER_AVAILABLE = True
+except ImportError:
+    RSS_PARSER_AVAILABLE = False
+    print("⚠️  RSS解析模块不可用，使用模拟数据")
+
 
 def setup_environment():
     """设置环境"""
@@ -51,7 +61,7 @@ def setup_environment():
         for error in errors:
             print(f"  - {error}")
         return False
-    
+
     if warnings:
         print("⚠️  配置警告:")
         for warning in warnings:
@@ -412,7 +422,7 @@ tags: [播客, 转录]
 
 ### 🚀 功能状态
 - ✅ 系统框架
-- ✅ 数据库管理  
+- ✅ 数据库管理
 - ✅ Obsidian集成
 - ✅ 订阅管理
 - {'✅' if transcript and '转录失败' not in transcript else '🔄'} 文字转录 ({transcription_mode})
@@ -487,6 +497,216 @@ def list_processed_episodes(limit=10):
     return episodes
 
 
+# ==================== RSS处理函数 ====================
+
+def handle_rss_parse(args):
+    """处理RSS解析命令"""
+    print("=" * 60)
+    print("📡 RSS解析")
+    print("=" * 60)
+    
+    try:
+        # 解析RSS feed
+        feed_data = parse_rss_feed(args.url)
+        feed_info = feed_data["feed_info"]
+        episodes = feed_data["episodes"]
+        
+        # 显示feed信息
+        print(f"\n🎙️  播客: {feed_info['title']}")
+        print(f"📝 描述: {feed_info['description'][:150]}..." if len(feed_info['description']) > 150 else f"📝 描述: {feed_info['description']}")
+        print(f"🌐 平台: {feed_info['platform']}")
+        print(f"🗣️  语言: {feed_info['language']}")
+        print(f"📊 总期数: {len(episodes)}")
+        
+        # 显示最新剧集
+        print(f"\n📋 最新 {args.limit} 期:")
+        for i, episode in enumerate(episodes[:args.limit], 1):
+            print(f"\n  {i}. {episode['title']}")
+            print(f"     发布日期: {episode['published']}")
+            if episode.get('episode_number'):
+                print(f"     期号: 第{episode['episode_number']}期")
+            if episode.get('duration'):
+                print(f"     时长: {episode['duration']}")
+            if episode.get('audio_url'):
+                audio_url = episode['audio_url']
+                print(f"     音频: {audio_url[:80]}..." if len(audio_url) > 80 else f"     音频: {audio_url}")
+        
+        # 保存为JSON文件
+        if args.save_json:
+            import json
+            with open(args.save_json, "w", encoding="utf-8") as f:
+                json.dump(feed_data, f, ensure_ascii=False, indent=2, default=str)
+            print(f"\n💾 已保存为JSON文件: {args.save_json}")
+        
+        # 保存为Markdown文件
+        if args.save_md:
+            # 保存feed摘要
+            summary_path = save_feed_summary_to_markdown(feed_data)
+            print(f"\n📄 已保存feed摘要: {summary_path}")
+            
+            # 保存最新一期
+            if episodes:
+                latest_episode = episodes[0]
+                episode_path = save_episode_to_markdown(feed_info, latest_episode)
+                print(f"📄 已保存最新一期: {episode_path}")
+        
+        print("\n" + "=" * 60)
+        print("✅ RSS解析完成")
+        print("=" * 60)
+        
+        return 0
+        
+    except Exception as e:
+        print(f"\n❌ RSS解析失败: {e}")
+        print("\n💡 故障排除:")
+        print("1. 检查URL是否正确")
+        print("2. 检查网络连接")
+        print("3. 确认RSS feed可公开访问")
+        return 1
+
+
+def handle_rss_test(args):
+    """处理RSS测试命令"""
+    print("=" * 60)
+    print("🧪 RSS功能测试")
+    print("=" * 60)
+    
+    try:
+        # 解析RSS feed
+        print(f"\n📡 解析RSS feed: {args.url[:80]}..." if len(args.url) > 80 else f"📡 解析RSS feed: {args.url}")
+        feed_data = parse_rss_feed(args.url)
+        feed_info = feed_data["feed_info"]
+        episodes = feed_data["episodes"]
+        
+        if not episodes:
+            print("❌ 没有找到剧集")
+            return 1
+        
+        # 选择要测试的剧集
+        if args.episode < 0 or args.episode >= len(episodes):
+            print(f"⚠️  剧集索引 {args.episode} 无效，使用最新一期")
+            episode_idx = 0
+        else:
+            episode_idx = args.episode
+        
+        episode = episodes[episode_idx]
+        print(f"\n🎯 测试剧集: {episode['title']}")
+        print(f"   发布日期: {episode.get('published', '未知')}")
+        
+        # 保存为Markdown文件
+        print("\n📄 生成Markdown文件...")
+        md_path = save_episode_to_markdown(feed_info, episode)
+        print(f"✅ 已保存: {md_path}")
+        
+        # 测试音频下载
+        if args.download and AUDIO_DOWNLOAD_AVAILABLE and episode.get('audio_url'):
+            print("\n📥 测试音频下载...")
+            try:
+                audio_url = episode['audio_url']
+                audio_path = download_audio(
+                    audio_url,
+                    podcast_name=feed_info['title'],
+                    episode_title=episode['title'],
+                    timeout=DOWNLOAD_TIMEOUT
+                )
+                print(f"✅ 音频下载成功: {audio_path}")
+                
+                # 获取文件信息
+                file_info = get_audio_info(audio_path)
+                if file_info:
+                    print(f"📊 文件信息: {file_info['size_formatted']}, 格式: {file_info['extension']}")
+                
+            except Exception as e:
+                print(f"❌ 音频下载失败: {e}")
+        
+        print("\n" + "=" * 60)
+        print("✅ RSS功能测试完成")
+        print("=" * 60)
+        
+        return 0
+        
+    except Exception as e:
+        print(f"\n❌ RSS测试失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
+
+def handle_rss_batch(args):
+    """处理批量处理命令"""
+    print("=" * 60)
+    print("🔄 批量处理订阅")
+    print("=" * 60)
+    
+    try:
+        # 获取所有订阅
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, rss_url FROM subscriptions WHERE enabled = 1")
+        subscriptions = cursor.fetchall()
+        conn.close()
+        
+        if not subscriptions:
+            print("📭 没有启用的订阅")
+            return 0
+        
+        print(f"\n📋 找到 {len(subscriptions)} 个订阅:")
+        for name, rss_url in subscriptions:
+            print(f"  - {name}: {rss_url[:80]}..." if len(rss_url) > 80 else f"  - {name}: {rss_url}")
+        
+        total_processed = 0
+        
+        for name, rss_url in subscriptions:
+            print(f"\n{'='*40}")
+            print(f"🎙️  处理: {name}")
+            print(f"{'='*40}")
+            
+            try:
+                # 解析RSS feed
+                feed_data = parse_rss_feed(rss_url)
+                feed_info = feed_data["feed_info"]
+                episodes = feed_data["episodes"][:args.limit]
+                
+                print(f"📊 找到 {len(episodes)} 期（处理最新 {args.limit} 期）")
+                
+                for i, episode in enumerate(episodes, 1):
+                    print(f"\n  {i}. {episode['title']}")
+                    
+                    # 保存为Markdown文件
+                    md_path = save_episode_to_markdown(feed_info, episode)
+                    print(f"     📄 已保存: {os.path.basename(md_path)}")
+                    
+                    # 下载音频
+                    if args.download and AUDIO_DOWNLOAD_AVAILABLE and episode.get('audio_url'):
+                        try:
+                            audio_path = download_audio(
+                                episode['audio_url'],
+                                podcast_name=name,
+                                episode_title=episode['title'],
+                                timeout=DOWNLOAD_TIMEOUT
+                            )
+                            print(f"     📥 音频下载: {os.path.basename(audio_path)}")
+                        except Exception as e:
+                            print(f"     ❌ 音频下载失败: {e}")
+                    
+                    total_processed += 1
+                
+            except Exception as e:
+                print(f"❌ 处理失败: {e}")
+                continue
+        
+        print("\n" + "=" * 60)
+        print(f"✅ 批量处理完成")
+        print(f"📊 总计处理: {total_processed} 期")
+        print("=" * 60)
+        
+        return 0
+        
+    except Exception as e:
+        print(f"\n❌ 批量处理失败: {e}")
+        return 1
+
+
 def main():
     parser = argparse.ArgumentParser(description="播客处理系统")
 
@@ -511,7 +731,7 @@ def main():
 
     # 配置命令
     subparsers.add_parser("config", help="显示配置")
-
+    
     # 清理命令
     cleanup_parser = subparsers.add_parser("cleanup", help="清理临时文件")
     cleanup_parser.add_argument(
@@ -520,6 +740,31 @@ def main():
     cleanup_parser.add_argument(
         "--dry-run", action="store_true", help="模拟运行，不实际删除"
     )
+    
+    # RSS解析命令
+    if RSS_PARSER_AVAILABLE:
+        rss_parser = subparsers.add_parser("rss", help="RSS解析功能")
+        rss_subparsers = rss_parser.add_subparsers(dest="rss_command", help="RSS子命令")
+        
+        # 解析RSS feed
+        parse_parser = rss_subparsers.add_parser("parse", help="解析RSS feed")
+        parse_parser.add_argument("--url", required=True, help="RSS feed URL")
+        parse_parser.add_argument("--limit", type=int, default=5, help="显示最新几期")
+        parse_parser.add_argument("--save-json", help="保存为JSON文件")
+        parse_parser.add_argument("--save-md", action="store_true", help="保存为Markdown文件")
+        
+        # 测试RSS feed
+        test_parser = rss_subparsers.add_parser("test", help="测试RSS feed")
+        test_parser.add_argument("--url", required=True, help="RSS feed URL")
+        test_parser.add_argument("--episode", type=int, default=0, help="测试第几期（0=最新）")
+        test_parser.add_argument("--download", action="store_true", help="测试音频下载")
+        
+        # 批量处理
+        batch_parser = rss_subparsers.add_parser("batch", help="批量处理订阅")
+        batch_parser.add_argument("--limit", type=int, default=3, help="每个播客处理几期")
+        batch_parser.add_argument("--download", action="store_true", help="下载音频")
+        batch_parser.add_argument("--transcribe", action="store_true", help="转录音频")
+        batch_parser.add_argument("--summary", action="store_true", help="生成AI总结")
 
     args = parser.parse_args()
 
@@ -663,6 +908,34 @@ def main():
                 print(f"❌ 清理失败: {e}")
         else:
             print("❌ 音频下载模块不可用，无法执行清理")
+    
+    elif args.command == "rss" and RSS_PARSER_AVAILABLE:
+        # RSS解析功能
+        if not hasattr(args, "rss_command") or not args.rss_command:
+            print("❌ 请指定RSS子命令")
+            print("  可用子命令: parse, test, batch")
+            return 1
+        
+        if args.rss_command == "parse":
+            # 解析RSS feed
+            return handle_rss_parse(args)
+        
+        elif args.rss_command == "test":
+            # 测试RSS feed
+            return handle_rss_test(args)
+        
+        elif args.rss_command == "batch":
+            # 批量处理
+            return handle_rss_batch(args)
+        
+        else:
+            print(f"❌ 未知的RSS子命令: {args.rss_command}")
+            return 1
+    
+    elif args.command == "rss" and not RSS_PARSER_AVAILABLE:
+        print("❌ RSS解析模块不可用")
+        print("💡 请安装 feedparser: pip install feedparser")
+        return 1
 
     else:
         # 显示帮助
@@ -673,6 +946,9 @@ def main():
         print("  3. 查看配置: podcast_processor.py config")
         print("  4. 查看历史: podcast_processor.py history")
         print("  5. 清理文件: podcast_processor.py cleanup [--age 24] [--dry-run]")
+        if RSS_PARSER_AVAILABLE:
+            print("  6. RSS解析: podcast_processor.py rss parse --url <RSS地址>")
+            print("  7. RSS测试: podcast_processor.py rss test --url <RSS地址>")
 
     return 0
 
