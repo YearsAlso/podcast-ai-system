@@ -13,7 +13,11 @@ feedparser>=6.0.0
 # 数据库
 # 使用Python内置的sqlite3，无需额外安装
 
-# 开发工具
+# 测试和开发工具
 black>=23.0.0
 flake8>=6.0.0
 pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Docker相关（用于本地测试）
+# docker>=6.0.0

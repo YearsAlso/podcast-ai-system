@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  podcast-processor:
+    build: .
+    container_name: podcast-ai-system
+    volumes:
+      - ./config.py:/app/config.py
+      - ./podcasts.db:/app/podcasts.db
+      - ./logs:/app/logs
+      - ./templates:/app/templates
+      # 挂载Obsidian目录（根据实际路径修改）
+      # - /path/to/your/obsidian/vault/Podcasts:/app/output
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: ["python", "podcast_processor.py", "--help"]
+    restart: unless-stopped
+
+  # 如果需要Web界面，可以添加以下服务
+  # web-ui:
+  #   build: ./web
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     - podcast-processor
+  #   environment:
+  #     - API_URL=http://podcast-processor:8000

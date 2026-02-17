@@ -1,0 +1,157 @@
+name: Auto Tag on Major Changes
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'podcast_processor.py'
+      - 'config.py'
+      - 'requirements.txt'
+      - 'Dockerfile'
+      - 'setup.sh'
+
+jobs:
+  analyze-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should_tag: ${{ steps.analyze.outputs.should_tag }}
+      tag_type: ${{ steps.analyze.outputs.tag_type }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Analyze changes
+        id: analyze
+        run: |
+          # 获取最近的tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+          
+          # 获取当前commit和上一个tag之间的差异
+          CHANGES=$(git diff --name-only $LATEST_TAG HEAD)
+          echo "Changes since last tag:"
+          echo "$CHANGES"
+          
+          # 分析变更类型
+          SHOULD_TAG="false"
+          TAG_TYPE="patch"
+          
+          # 检查是否有重大变更
+          if echo "$CHANGES" | grep -q "config.py\|podcast_processor.py"; then
+            # 检查是否是破坏性变更
+            if echo "$CHANGES" | grep -q "BREAKING CHANGE\|breaking change"; then
+              TAG_TYPE="major"
+            else
+              TAG_TYPE="minor"
+            fi
+            SHOULD_TAG="true"
+          fi
+          
+          # 检查依赖更新
+          if echo "$CHANGES" | grep -q "requirements.txt"; then
+            SHOULD_TAG="true"
+            if [ "$TAG_TYPE" = "patch" ]; then
+              TAG_TYPE="minor"
+            fi
+          fi
+          
+          echo "should_tag=$SHOULD_TAG" >> $GITHUB_OUTPUT
+          echo "tag_type=$TAG_TYPE" >> $GITHUB_OUTPUT
+          echo "Should create tag: $SHOULD_TAG"
+          echo "Tag type: $TAG_TYPE"
+
+  create-tag:
+    needs: analyze-changes
+    if: needs.analyze-changes.outputs.should_tag == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Get current version
+        id: get_version
+        run: |
+          # 获取最新的tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          VERSION=${LATEST_TAG#v}
+          echo "Current version: $VERSION"
+          
+          # 解析版本号
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          
+          # 根据变更类型更新版本
+          TAG_TYPE="${{ needs.analyze-changes.outputs.tag_type }}"
+          case "$TAG_TYPE" in
+            "major")
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            "minor")
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            "patch")
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          NEW_TAG="v$NEW_VERSION"
+          
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+          echo "New tag: $NEW_TAG"
+
+      - name: Create and push tag
+        run: |
+          git tag ${{ steps.get_version.outputs.NEW_TAG }}
+          git push origin ${{ steps.get_version.outputs.NEW_TAG }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.NEW_TAG }}
+          name: Release ${{ steps.get_version.outputs.NEW_TAG }}
+          body: |
+            ## 🎙️ Auto-tagged Release ${{ steps.get_version.outputs.NEW_VERSION }}
+            
+            This release was automatically created based on significant changes detected in the codebase.
+            
+            ### 🔍 Change Analysis
+            - **Change Type**: ${{ needs.analyze-changes.outputs.tag_type }} update
+            - **Triggered By**: Changes in core files
+            
+            ### 📦 Available Formats
+            - **Docker Image**: `ghcr.io/${{ github.repository }}:${{ steps.get_version.outputs.NEW_TAG }}`
+            - **Source Code**: [Download ZIP](https://github.com/${{ github.repository }}/archive/refs/tags/${{ steps.get_version.outputs.NEW_TAG }}.zip)
+            
+            ### 🚀 Quick Start
+            ```bash
+            # Pull the Docker image
+            docker pull ghcr.io/${{ github.repository }}:${{ steps.get_version.outputs.NEW_TAG }}
+            
+            # Run the container
+            docker run -it --rm \
+              -v $(pwd)/config.py:/app/config.py \
+              ghcr.io/${{ github.repository }}:${{ steps.get_version.outputs.NEW_TAG }} \
+              python podcast_processor.py --help
+            ```
+          draft: false
+          prerelease: false
+          generate_release_notes: true
