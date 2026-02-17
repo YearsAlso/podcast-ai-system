@@ -1,4 +1,4 @@
-name: Daily Build and Test
+name: Daily Build and Test (Develop Branch)
 
 on:
   schedule:

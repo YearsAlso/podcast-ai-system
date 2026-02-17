@@ -45,12 +45,17 @@ def setup_environment():
     print("🔧 设置环境...")
 
     # 验证配置
-    errors = validate_config()
+    errors, warnings = validate_config()
     if errors:
         print("❌ 配置错误:")
         for error in errors:
             print(f"  - {error}")
         return False
+    
+    if warnings:
+        print("⚠️  配置警告:")
+        for warning in warnings:
+            print(f"  - {warning}")
 
     # 创建数据库
     setup_database()

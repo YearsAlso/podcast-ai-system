@@ -71,6 +71,8 @@ config_secrets.py
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
 
 # Obsidian (don't include Obsidian vault files)
 # These should remain in your local Obsidian directory

@@ -1,4 +1,4 @@
-name: Auto Tag on Major Changes
+name: Auto Tag on Major Changes (Main Branch)
 
 on:
   push:

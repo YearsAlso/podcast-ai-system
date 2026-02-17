@@ -1,11 +1,10 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline (Legacy - for feature branches)
 
 on:
   push:
-    branches: [ main, develop ]
-    tags: [ 'v*' ]
+    branches-ignore: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches-ignore: [ main, develop ]
   workflow_dispatch:  # 允许手动触发
 
 env:
